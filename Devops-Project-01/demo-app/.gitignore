@@ -1,0 +1,12 @@
+cat <<EOF > .gitignore
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# General
+*.log
+.DS_Store
+EOF
+

@@ -1,0 +1,38 @@
+---
+# tasks file for frontend
+- name: update cache
+  apt: 
+    update_cache: true
+    cache_valid_time: 3600
+- name: Installing Java
+  apt:
+    name: openjdk-17-jdk
+    state: present
+- name: Checking Java Version
+  command: java --version
+
+# - name: Installing apache tomcat
+#   copy:
+#     src: /home/ayush/commonapps/apache-tomcat-9.0.113.tar.gz
+#     dest: /home/ubuntu/apache-tomcat-9.0.113.tar.gz
+#     owner: ubuntu
+#     group: ubuntu
+
+# - name: Unpacking of tomcat
+#   unarchive:
+#     src: /home/ubuntu/apache-tomcat-9.0.113.tar.gz
+#     dest: /home/ubuntu/
+#     owner: ubuntu
+#     group: ubuntu
+#     remote_src: yes
+- name: Creating app dir
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: 'ubuntu'
+    group: 'ubuntu'
+  loop:
+    - /home/ubuntu/app
+    - /home/ubuntu/backup
+    - /home/ubuntu/deployables

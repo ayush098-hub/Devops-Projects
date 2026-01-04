@@ -1,0 +1,6 @@
+com/example/demo/DemoApplication.class
+com/example/demo/HealthResponse.class
+com/example/demo/VersionResponse.class
+com/example/demo/HealthController.class
+com/example/demo/HomeController.class
+com/example/demo/CustomHealthIndicator.class

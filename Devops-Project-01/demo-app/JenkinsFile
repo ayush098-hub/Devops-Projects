@@ -1,0 +1,163 @@
+pipeline {
+    agent any
+    
+    environment{
+     workspace = "${env.WORKSPACE}"
+     repo_name = "Devops_project_1"
+     repo_url = "/home/ayush/project_repos/Devops_project_1.git"
+     repo_branch = "Dev"
+     build_version= "${env.BUILD_NUMBER}"
+     NEXUS_USER = "admin"
+     NEXUS_PASSWORD = "admin"
+     NEXUS_URL = "http://localhost:8082/repository/maven-releases/com/example/demo-app"
+     server_ip = "13.202.106.120"
+     server_username = "ubuntu"
+     deploy_path = "/home/ubuntu/deployables"
+     HEALTH_ENDPOINT = "$server_ip:8081/api/health"
+     
+    }
+
+    stages {
+        stage('Git Clone') {
+            steps {
+                    echo "The workspace is: $workspace"
+                    sh "rm -rf $repo_name"
+                    sh "git clone $repo_url"
+                
+            }
+        }
+        stage('Git checkout'){
+            steps{
+                dir("${repo_name}"){
+                    sh "git checkout dev"
+                }
+                sh "pwd"
+            }
+        }
+stage('SonarQube Analysis') {
+    steps {
+        script {
+            echo "Running SonarQube analysis..."
+            dir("$repo_name"){
+                withSonarQubeEnv('SonarQube-Local') {
+                    sh '''
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=demo-app \
+                          -Dsonar.projectName=DemoApp
+                    '''
+                }
+            }
+            echo "✅ SonarQube analysis completed"
+        }
+    }
+}
+stage('Quality Gate') {
+    steps {
+        script {
+            echo "⏳ Waiting for Quality Gate result..."
+            timeout(time: 150, unit: 'SECONDS') {
+                def qg = waitForQualityGate()
+                if (qg.status != 'OK') {
+                    error "❌ Quality Gate failed: ${qg.status}"
+                }
+            }
+            echo "✅ Quality Gate passed!"
+        }
+    }
+}
+    
+        stage('Maven clean'){
+            steps{
+                dir("${repo_name}"){
+                    sh "mvn clean package -Drevision=1.0.${build_version}"
+                }
+            }
+        }
+        stage('Push to artifact'){
+            steps{
+                dir("${repo_name}"){
+                    sh "mvn deploy -DskipTests -Drevision=1.0.${build_version}"
+                }
+            }
+        }
+        stage('Pull the artifact'){
+            steps{
+                sh "curl -u ${NEXUS_USER}:${NEXUS_PASSWORD} \
+                -O ${NEXUS_URL}/1.0.${build_version}/demo-app-1.0.${build_version}.jar"
+            }
+        }
+        stage('push to server'){
+            steps{
+                sh "scp demo-app-1.0.${build_version}.jar ${server_username}@${server_ip}:${deploy_path}"
+            }
+        }
+        stage('Take Backup and stop service'){
+    steps{
+        script{
+            sh """
+                ssh ${server_username}@${server_ip} <<'EOF'
+                files=\$(shopt -s nullglob dotglob; echo app/*)
+                if (( \${#files} ))
+                then
+                    echo "contains files"
+                    mkdir -p backup
+                    mv app/* backup/
+                    pkill -f java || true
+                    echo "Moved and killed the process";
+                else 
+                    echo "empty (or does not exist or is a file)"
+                fi
+EOF
+            """
+        }
+    }
+}
+        stage('Deploymnet'){
+            steps{
+
+                script{
+                    sh """
+                    ssh ${server_username}@${server_ip} <<'EOF'
+                    export FE_PORT=8081
+                    cp ${deploy_path}/demo-app-1.0.${build_version}.jar app/
+                    nohup java -jar app/demo-app-1.0.${build_version}.jar >> app/app.out 2>&1 < /dev/null &
+                    echo "Started jar in nohup mode,going for sleep for 150s"
+                    sleep 150
+EOF
+                    """
+                }
+            }
+        }
+        stage('Health check and Rollback'){
+    steps{
+        script{
+            sh """
+                ssh ${server_username}@${server_ip} <<'EOF'
+                status=\$(curl -s -o /dev/null -w '%{http_code}' http://$server_ip:8081/api/health)
+                
+            if [[ "\$status" == "200" ]]; then
+                    echo "Health check passed"
+                else
+                    echo "Health check failed, going for Rollback and status is: \$status"
+                    
+                    lastversion=\$((${build_version} - 1))
+                    
+                    pkill -f demo-app || true
+                    
+                    mv app/demo-app-1.0.${build_version}.jar backup/
+                    
+                    cp backup/demo-app-1.0.\${lastversion}.jar app/
+                    
+                    nohup java -jar app/demo-app-1.0.\${lastversion}.jar > app/app.out 2>&1 < /dev/null &
+                    
+                    echo "Rollback completed to version 1.0.\${lastversion}"
+                fi
+EOF
+            """
+        }
+    }
+}
+        
+    }
+}
+
