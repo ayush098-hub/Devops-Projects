@@ -3,12 +3,14 @@ resource "aws_instance" "app-server" {
   instance_type = "t2.micro"
 
   tags = {
-    "Name": "App-Server1"
+    "Name": "App-Server"
   }
 }
 
 resource "aws_s3_bucket" "s3_bucket" {
   bucket = "mys3bucket56789234"
+    force_destroy = true
+
 }
 
 terraform {
