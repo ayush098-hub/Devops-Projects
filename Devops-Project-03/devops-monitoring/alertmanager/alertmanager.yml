@@ -11,6 +11,6 @@ route:
 receivers:
   - name: pagerduty
     pagerduty_configs:
-      - routing_key: "d48046ec59364a0bd0ab3f4847a4181b"
+      - routing_key: "API-KEY"
         severity: '{{ .CommonLabels.severity }}'
         description: '{{ .CommonAnnotations.summary }}'
