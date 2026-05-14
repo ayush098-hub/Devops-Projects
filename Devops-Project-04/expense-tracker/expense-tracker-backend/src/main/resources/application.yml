@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/postgres
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: expense_tracker
+        format_sql: true
+    open-in-view: false
+    show-sql: false
+
+app:
+  jwt:
+    secret: "c3VwZXItc2VjdXJlLWRlbW8tc2VjcmV0LWJhc2U2NC1zdHJpbmctc2VjcmV0LW1lZXRzLWxvbmc="
+    expiration-ms: 86400000
