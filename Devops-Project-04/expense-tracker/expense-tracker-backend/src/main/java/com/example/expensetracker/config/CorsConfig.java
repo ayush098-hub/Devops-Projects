@@ -16,10 +16,13 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
+
+        // Allow any HTTP or HTTPS origin
         config.setAllowedOriginPatterns(List.of(
-                "http://localhost:3000",
-                "http://127.0.0.1:3000"
+                "http://*",
+                "https://*"
         ));
+
         config.setAllowedMethods(List.of(
                 "GET",
                 "POST",
@@ -28,6 +31,7 @@ public class CorsConfig {
                 "DELETE",
                 "OPTIONS"
         ));
+
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of(
                 "Authorization",
@@ -37,6 +41,7 @@ public class CorsConfig {
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
 
         return source;
